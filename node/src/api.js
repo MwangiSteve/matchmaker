@@ -3,19 +3,21 @@
 //   GET  /api/options                 services, estates and urgency choices for the form
 //   POST /api/requests                post a job -> saved request + top matched pros
 //   POST /api/requests/:id/hire       customer hires one of the pros they were shown
+//   POST /api/pros                    a fundi signs up as a pro
 //
 // No login yet: customers are identified by phone number. Add real auth
 // (e.g. SMS one-time codes) before launch, otherwise anyone can post as anyone.
 import express from 'express';
 import { AREAS } from './areas.js';
-import { CATEGORY_NAMES, URGENCY } from './matcher.js';
-import { getProCards, hirePro, matchRequest, upsertCustomer } from './store.js';
+import { CATEGORIES, CATEGORY_NAMES, URGENCY } from './matcher.js';
+import { createPro, getProCards, hirePro, matchRequest, upsertCustomer } from './store.js';
 
 const LABELS = {
   plumbing: 'Plumbing', electrical: 'Electrical', cleaning: 'Cleaning', painting: 'Painting',
   carpentry: 'Carpentry', appliance_repair: 'Appliance repair', moving: 'Moving',
 };
 const URGENCY_LABELS = { now: 'Today', this_week: 'This week', flexible: "I'm flexible" };
+const TRAVEL_CHOICES = [45, 60, 90];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class BadRequest extends Error {}
@@ -28,22 +30,46 @@ export function normalizeKenyanPhone(raw) {
   return `+254${m[1]}`;
 }
 
+function parseLocation(b) {
+  if (typeof b.lat === 'number' && typeof b.lon === 'number') {
+    if (!(b.lat > -4.8 && b.lat < 5.1 && b.lon > 33.9 && b.lon < 42)) throw new BadRequest('That location is outside Kenya');
+    return { lat: b.lat, lon: b.lon, area: typeof b.area === 'string' && AREAS[b.area] ? b.area : null };
+  }
+  if (AREAS[b.area]) return { lat: AREAS[b.area][0], lon: AREAS[b.area][1], area: b.area };
+  throw new BadRequest('Choose your estate or share your location');
+}
+
+function parsePro(body) {
+  const b = body ?? {};
+  const fullName = typeof b.fullName === 'string' ? b.fullName.trim().replace(/\s+/g, ' ') : '';
+  if (fullName.length < 3 || fullName.length > 80 || !fullName.includes(' ')) {
+    throw new BadRequest('Enter your first and last name');
+  }
+  if (!Array.isArray(b.services) || b.services.length === 0) throw new BadRequest('Choose at least one service you offer');
+  const seen = new Set();
+  const services = b.services.map((s) => {
+    if (!CATEGORY_NAMES.includes(s?.category) || seen.has(s.category)) throw new BadRequest('Invalid service');
+    seen.add(s.category);
+    const raw = s.typicalPriceKes;
+    if (raw === undefined || raw === null || raw === '') return { category: s.category, typicalPriceKes: null };
+    const price = Number(raw);
+    if (!Number.isInteger(price) || price < 100 || price > 1_000_000) {
+      throw new BadRequest('Prices must be between KES 100 and KES 1,000,000');
+    }
+    return { category: s.category, typicalPriceKes: price };
+  });
+  const maxTravelMin = Number(b.maxTravelMin);
+  if (!TRAVEL_CHOICES.includes(maxTravelMin)) throw new BadRequest('Choose how far you can travel');
+  if (b.agree !== true) throw new BadRequest('Please accept the terms to join');
+  return { fullName, phone: normalizeKenyanPhone(b.phone), maxTravelMin, services, ...parseLocation(b) };
+}
+
 function parseJob(body) {
   const b = body ?? {};
   if (!CATEGORY_NAMES.includes(b.category)) throw new BadRequest('Choose a service');
   if (!URGENCY.includes(b.urgency)) throw new BadRequest('Choose when you need it');
 
-  let lat; let lon; let area = null;
-  if (typeof b.lat === 'number' && typeof b.lon === 'number') {
-    if (!(b.lat > -4.8 && b.lat < 5.1 && b.lon > 33.9 && b.lon < 42)) throw new BadRequest('That location is outside Kenya');
-    ({ lat, lon } = b);
-    area = typeof b.area === 'string' && AREAS[b.area] ? b.area : null;
-  } else if (AREAS[b.area]) {
-    [lat, lon] = AREAS[b.area];
-    area = b.area;
-  } else {
-    throw new BadRequest('Choose your estate or share your location');
-  }
+  const { lat, lon, area } = parseLocation(b);
 
   const budget = Number(b.budgetKes);
   if (!Number.isInteger(budget) || budget < 200 || budget > 1_000_000) {
@@ -67,7 +93,8 @@ export function createApp(pool, { modelUrl = null } = {}) {
 
   app.get('/api/options', (req, res) => {
     res.json({
-      categories: CATEGORY_NAMES.map((slug) => ({ slug, label: LABELS[slug] ?? slug })),
+      categories: CATEGORY_NAMES.map((slug) => ({ slug, label: LABELS[slug] ?? slug, basePriceKes: CATEGORIES[slug] })),
+      travel: TRAVEL_CHOICES,
       areas: Object.keys(AREAS),
       urgency: URGENCY.map((value) => ({ value, label: URGENCY_LABELS[value] })),
     });
@@ -110,6 +137,17 @@ export function createApp(pool, { modelUrl = null } = {}) {
       res.status(201).json({ jobId, pro: { name: rows[0].full_name, phone: rows[0].phone } });
     } catch (e) {
       if (e.code === '23505') return res.status(409).json({ error: 'You already hired someone for this job' });
+      throw e;
+    }
+  }));
+
+  app.post('/api/pros', wrap(async (req, res) => {
+    const pro = parsePro(req.body);
+    try {
+      const id = await createPro(pool, pro);
+      res.status(201).json({ id, name: pro.fullName, area: pro.area, services: pro.services.map((s) => s.category) });
+    } catch (e) {
+      if (e.code === '23505') return res.status(409).json({ error: 'This phone number is already registered as a pro' });
       throw e;
     }
   }));

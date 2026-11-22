@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BRAND, COMPANY, ICONS, SiteHeader } from './brand.jsx';
+import { BRAND, COMPANY, ICONS, SiteHeader, getOptions, link } from './brand.jsx';
 
 const BLURBS = {
   plumbing: 'Leaks, blocked drains, taps, water tanks',
@@ -53,7 +53,7 @@ function postUrl(service, area) {
   if (service) q.set('service', service);
   if (area) q.set('area', area);
   const s = q.toString();
-  return `/post${s ? `?${s}` : ''}`;
+  return link(`/post${s ? `?${s}` : ''}`);
 }
 
 export default function Home() {
@@ -62,7 +62,7 @@ export default function Home() {
   const [area, setArea] = useState('');
 
   useEffect(() => {
-    fetch('/api/options').then((r) => r.json()).then(setOptions).catch(() => {});
+    getOptions().then(setOptions);
   }, []);
 
   const categories = options?.categories ?? [];
@@ -138,7 +138,7 @@ export default function Home() {
               </li>
             ))}
           </ol>
-          <a className="primary" href="/post">Post a job, it's free</a>
+          <a className="primary" href={link('/post')}>Post a job, it's free</a>
         </div>
       </section>
 
@@ -170,7 +170,7 @@ export default function Home() {
             <h2>Are you a fundi?</h2>
             <p>Get jobs from customers near you. No more waiting for word of mouth. New pros get a fair chance to be seen while they build their reviews.</p>
           </div>
-          <span className="soon">Pro sign-up opening soon</span>
+          <a className="soon" href={link('/join')}>Join as a pro →</a>
         </div>
       </section>
 

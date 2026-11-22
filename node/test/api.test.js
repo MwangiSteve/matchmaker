@@ -87,3 +87,46 @@ test('rejects bad input with a readable message', { skip }, async () => {
     assert.match(res.body.error, msg);
   }
 });
+
+const newPro = (phone) => ({
+  fullName: 'Test Fundi', phone, area: 'Kilimani', maxTravelMin: 60, agree: true,
+  services: [{ category: 'plumbing', typicalPriceKes: 2200 }, { category: 'electrical' }],
+});
+
+test('a pro signs up and becomes matchable', { skip }, async () => {
+  const phone = `07${String(Date.now()).slice(-8)}`;
+  const res = await post('/api/pros', newPro(phone));
+  assert.equal(res.status, 201);
+  assert.deepEqual(res.body.services, ['plumbing', 'electrical']);
+
+  const { rows } = await pool.query(
+    `select p.verified, ps.category, ps.typical_price_kes from pros p join pro_services ps on ps.pro_id = p.id
+      where p.id = $1 order by ps.category`, [res.body.id]);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].verified, false, 'new pros start unverified');
+  assert.equal(rows.find((r) => r.category === 'plumbing').typical_price_kes, 2200);
+
+  const { findCandidatePros } = await import('../src/store.js');
+  const cands = await findCandidatePros(pool, { category: 'electrical', lat: -1.2906, lon: 36.784 });
+  assert.ok(cands.some((c) => c.id === res.body.id), 'new pro should be a candidate for nearby jobs');
+
+  const dup = await post('/api/pros', newPro(phone));
+  assert.equal(dup.status, 409);
+});
+
+test('pro sign-up rejects bad input', { skip }, async () => {
+  for (const [patch, msg] of [
+    [{ fullName: 'Juma' }, /first and last/],
+    [{ services: [] }, /at least one service/],
+    [{ services: [{ category: 'gardening' }] }, /Invalid service/],
+    [{ services: [{ category: 'plumbing' }, { category: 'plumbing' }] }, /Invalid service/],
+    [{ services: [{ category: 'plumbing', typicalPriceKes: 5 }] }, /Prices/],
+    [{ maxTravelMin: 500 }, /travel/],
+    [{ agree: false }, /terms/],
+    [{ phone: '555' }, /phone/],
+  ]) {
+    const res = await post('/api/pros', { ...newPro('0722000111'), ...patch });
+    assert.equal(res.status, 400, JSON.stringify(patch));
+    assert.match(res.body.error, msg);
+  }
+});

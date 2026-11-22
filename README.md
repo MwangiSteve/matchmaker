@@ -73,13 +73,15 @@ await addReview(pool, { jobId, stars: 5 });
 
 ## Post a job screen (React + Express)
 
-`web/` has two pages: the **homepage** at `/` (search box, popular services, how it works, areas served, a section for pros) and the customer's **"Post a job"** page at `/post`. Searching on the homepage, e.g. "leaking tap" or "maji" with an estate, opens `/post` with the service and estate already filled in. Both pages talk to the API in `node/server.js`. The Post a job flow: pick a service, describe the job, choose an estate (or share your location), choose when, set a budget, enter a phone number, then see the top 5 pros and hire one. The pro's phone number is shown only after hiring.
+`web/` has three pages: the **homepage** at `/` (search box, popular services, how it works, areas served, a section for pros), the customer's **"Post a job"** page at `/post`, and **pro sign-up** at `/join` (name, phone, services with usual prices, estate, travel distance). New pros start unverified and show as "New on Ceras" until you check their ID and set `verified = true`. Searching on the homepage, e.g. "leaking tap" or "maji" with an estate, opens `/post` with the service and estate already filled in. Both pages talk to the API in `node/server.js`. The Post a job flow: pick a service, describe the job, choose an estate (or share your location), choose when, set a budget, enter a phone number, then see the top 5 pros and hire one. The pro's phone number is shown only after hiring.
 
 ```bash
 python serve.py                                            # optional: ML model on :8765
 cd node && DATABASE_URL=... MODEL_URL=http://127.0.0.1:8765 node server.js   # API on :3000
 cd web && npm install && npm run dev                       # page on :5173, /api proxied to :3000
 ```
+
+For a clickable demo with no server or database, run `npm run build:preview` in `web/`. It uses clearly labelled sample data and saves nothing.
 
 For production, run `npm run build` in `web/`. `node server.js` then serves the page and the API together on one port.
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BRAND, ICONS, SiteHeader } from './brand.jsx';
+import { BRAND, ICONS, SiteHeader, currentLocation, getOptions, postJson } from './brand.jsx';
 
 const kes = (n) => `KES ${Number(n).toLocaleString('en-KE')}`;
 
@@ -10,18 +10,10 @@ function save(key, value) {
   try { localStorage.setItem(key, value); } catch { /* private mode */ }
 }
 
-async function api(path, body) {
-  const res = await fetch(path, body ? {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  } : undefined);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? 'Something went wrong. Please try again.');
-  return data;
-}
 
 export default function PostJob() {
   const [options, setOptions] = useState(null);
-  const params = new URLSearchParams(window.location.search);
+  const { params } = currentLocation();
   const [form, setForm] = useState({
     category: params.get('service') ?? '', description: '', area: params.get('area') ?? load('mm.area'), urgency: 'this_week',
     budgetKes: '', name: load('mm.name'), phone: load('mm.phone'),
@@ -35,7 +27,7 @@ export default function PostJob() {
   const [hired, setHired] = useState(null);
 
   useEffect(() => {
-    api('/api/options').then(setOptions).catch((e) => setError(e.message));
+    getOptions().then(setOptions);
   }, []);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target?.value ?? e }));
@@ -56,7 +48,7 @@ export default function PostJob() {
     if (!form.category) return setError('Choose a service');
     setBusy(true);
     try {
-      const data = await api('/api/requests', {
+      const data = await postJson('/api/requests', {
         ...form, budgetKes: Number(form.budgetKes), area: form.area || undefined, ...(coords ?? {}),
       });
       save('mm.name', form.name); save('mm.phone', form.phone); save('mm.area', form.area);
@@ -74,7 +66,7 @@ export default function PostJob() {
     setError('');
     setBusy(true);
     try {
-      const data = await api(`/api/requests/${result.requestId}/hire`, { proId: pro.id, phone: form.phone });
+      const data = await postJson(`/api/requests/${result.requestId}/hire`, { proId: pro.id, phone: form.phone });
       setHired(data.pro);
       setStep('hired');
       window.scrollTo(0, 0);

@@ -132,6 +132,33 @@ export async function getProCards(db, proIds, category) {
   }]));
 }
 
+/**
+ * Register a new pro with their services, in one transaction.
+ * services: [{ category, typicalPriceKes? }]. Throws with code '23505' if the phone is taken.
+ */
+export async function createPro(pool, { fullName, phone, area, lat, lon, maxTravelMin, services }) {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    const { rows: [pro] } = await client.query(
+      `insert into pros (full_name, phone, area, lat, lon, max_travel_min)
+       values ($1, $2, $3, $4, $5, $6) returning id`,
+      [fullName, phone, area, lat, lon, maxTravelMin]);
+    for (const s of services) {
+      await client.query(
+        `insert into pro_services (pro_id, category, typical_price_kes) values ($1, $2, $3)`,
+        [pro.id, s.category, s.typicalPriceKes ?? null]);
+    }
+    await client.query('commit');
+    return pro.id;
+  } catch (e) {
+    await client.query('rollback');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 /** Find or create a customer by phone number. Returns the customer id. */
 export async function upsertCustomer(db, { phone, name = null }) {
   const { rows } = await db.query(
