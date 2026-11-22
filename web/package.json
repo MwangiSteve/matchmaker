@@ -1,0 +1,20 @@
+{
+  "name": "matchmaker-web",
+  "version": "1.0.0",
+  "description": "Post a job screen",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.2.0",
+    "vite": "^7.3.8"
+  },
+  "private": true,
+  "type": "module"
+}

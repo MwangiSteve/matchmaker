@@ -68,6 +68,22 @@ await addReview(pool, { jobId, stars: 5 });
 
 **Call all five.** They're what the model learns from. `matchRequest` logs the pros shown and the exact features used, and the rest record what happened next.
 
+## Post a job screen (React + Express)
+
+`web/` is the customer's "Post a job" page, and `node/server.js` is the API behind it. The flow: pick a service, describe the job, choose an estate (or share your location), choose when, set a budget, enter a phone number, then see the top 5 pros and hire one. The pro's phone number is shown only after hiring.
+
+```bash
+python serve.py                                            # optional: ML model on :8765
+cd node && DATABASE_URL=... MODEL_URL=http://127.0.0.1:8765 node server.js   # API on :3000
+cd web && npm install && npm run dev                       # page on :5173, /api proxied to :3000
+```
+
+For production, run `npm run build` in `web/`. `node server.js` then serves the page and the API together on one port.
+
+API: `GET /api/options`, `POST /api/requests`, `POST /api/requests/:id/hire`. See `node/src/api.js`.
+
+**Before launch:** add phone verification (SMS one-time code). Right now anyone who types a phone number can post or hire as that customer.
+
 ## Retraining on real data
 
 ```bash

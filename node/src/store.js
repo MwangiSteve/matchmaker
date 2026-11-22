@@ -109,6 +109,39 @@ export async function matchRequest(pool, input, opts = {}) {
   return { requestId: saved.id, source, candidates: pros.length, results };
 }
 
+/** Public profile info for showing pros to a customer (no phone numbers). */
+export async function getProCards(db, proIds, category) {
+  const { rows } = await db.query(
+    `select p.id, p.full_name, p.area, p.verified, ps.typical_price_kes, c.base_price_kes,
+            s.jobs_done, s.n_reviews, s.rating
+       from pros p
+       join pro_stats s on s.pro_id = p.id
+       join categories c on c.slug = $2
+       left join pro_services ps on ps.pro_id = p.id and ps.category = $2
+      where p.id = any($1)`,
+    [proIds, category]);
+  return new Map(rows.map((r) => [r.id, {
+    id: r.id,
+    name: r.full_name,
+    area: r.area,
+    verified: r.verified,
+    typicalPriceKes: r.typical_price_kes ?? r.base_price_kes,
+    jobsDone: r.jobs_done,
+    reviews: r.n_reviews,
+    rating: r.rating == null ? null : Math.round(r.rating * 10) / 10,
+  }]));
+}
+
+/** Find or create a customer by phone number. Returns the customer id. */
+export async function upsertCustomer(db, { phone, name = null }) {
+  const { rows } = await db.query(
+    `insert into customers (phone, full_name) values ($1, $2)
+     on conflict (phone) do update set full_name = coalesce(excluded.full_name, customers.full_name)
+     returning id`,
+    [phone, name]);
+  return rows[0].id;
+}
+
 /** A shown pro replied to the lead. Also marks the pro as active. */
 export async function recordResponse(db, { requestId, proId, quoteKes = null, message = null }) {
   await db.query(

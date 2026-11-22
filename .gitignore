@@ -4,3 +4,4 @@ model.pkl
 node_modules/
 .venv/
 *.zip
+dist/
