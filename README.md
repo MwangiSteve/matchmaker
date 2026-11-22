@@ -17,6 +17,10 @@ score = P(respond) × P(hired | responded) × P(good job | hired)
 | `demo.py` | Collect logs → train → simulated A/B test → save `model.pkl` |
 | `serve.py` | HTTP scoring service so Node can use the model |
 | `node/` | Node module: filter, features, heuristic, model client with fallback |
+| `node/src/store.js` | Postgres: find candidate pros, save requests, log matches, record responses/hires/reviews |
+| `db/schema.sql` | Database tables (Postgres / Supabase / Neon) |
+| `db/seed.py` | Fills a **test** database with simulated pros and 2 months of activity |
+| `export_training.py` | Trains the model from the database logs |
 
 ## Quick start
 
@@ -26,6 +30,51 @@ python demo.py          # ~3 min; writes model.pkl
 python serve.py         # scoring service on :8765
 cd node && npm test && node example.js
 ```
+
+## Database setup
+
+1. Create a free Postgres database, e.g. on [Supabase](https://supabase.com) or [Neon](https://neon.tech), and copy its connection string.
+2. Create the tables:
+   ```bash
+   psql "$DATABASE_URL" -f db/schema.sql
+   ```
+3. Optional, test databases only: load simulated pros so you can try matching:
+   ```bash
+   python db/seed.py
+   ```
+4. Match from Node:
+   ```bash
+   cd node && npm install && DATABASE_URL=... node example-db.js
+   ```
+
+In your API:
+
+```js
+import pg from 'pg';
+import { matchRequest, recordResponse, hirePro, finishJob, addReview } from './src/store.js';
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+
+// customer posts a request
+const { requestId, results } = await matchRequest(pool, {
+  customerId, category: 'plumbing', area: 'Kilimani', lat, lon,
+  urgency: 'now', budgetKes: 3000, hasPhotos: true,
+}, { modelUrl: process.env.MODEL_URL });   // omit modelUrl to use the heuristic only
+
+await recordResponse(pool, { requestId, proId, quoteKes: 2800 });   // pro replies
+const jobId = await hirePro(pool, { requestId, proId });              // customer hires
+await finishJob(pool, jobId, 'completed');                            // or 'cancelled' / 'disputed'
+await addReview(pool, { jobId, stars: 5 });
+```
+
+**Call all five.** They're what the model learns from. `matchRequest` logs the pros shown and the exact features used, and the rest record what happened next.
+
+## Retraining on real data
+
+```bash
+DATABASE_URL=... python export_training.py      # writes model.pkl, then restart serve.py
+```
+
+It refuses to train until there are at least 2,000 impressions, 500 responses and 200 hires. Until then, keep using the heuristic. Retraining weekly is plenty at first.
 
 ## How it fits your backend
 

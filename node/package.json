@@ -4,9 +4,14 @@
   "description": "Predictive pro-matching engine for a services marketplace",
   "type": "module",
   "main": "src/matcher.js",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "example": "node example.js",
     "test": "node --test"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
   }
 }
