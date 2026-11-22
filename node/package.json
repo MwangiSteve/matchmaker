@@ -1,0 +1,12 @@
+{
+  "name": "matchmaker",
+  "version": "0.1.0",
+  "description": "Predictive pro-matching engine for a services marketplace",
+  "type": "module",
+  "main": "src/matcher.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "example": "node example.js",
+    "test": "node --test"
+  }
+}
