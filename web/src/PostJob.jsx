@@ -4,8 +4,8 @@ const ICONS = {
   plumbing: '🚰', electrical: '💡', cleaning: '🧽', painting: '🎨',
   carpentry: '🪚', appliance_repair: '🔧', moving: '🚚',
 };
-// Placeholder brand name: change it here.
-const BRAND = { first: 'fundi', second: 'match' };
+const BRAND = 'Ceras';
+const COMPANY = 'Ceras Technologies';
 const kes = (n) => `KES ${Number(n).toLocaleString('en-KE')}`;
 
 function load(key, fallback = '') {
@@ -99,7 +99,7 @@ export default function PostJob() {
   return (
     <div className="page">
       <header className="top">
-        <span className="logo">{BRAND.first}<span>{BRAND.second}</span></span>
+        <span className="logo" aria-label={COMPANY}>{BRAND}<span> Technologies</span></span>
       </header>
 
       {error && <div className="alert" role="alert">{error}</div>}
@@ -200,13 +200,14 @@ export default function PostJob() {
                   </div>
                   <div className="meta">
                     {p.isNew || p.rating == null
-                      ? <span className="badge new">New on {BRAND.first}{BRAND.second}</span>
+                      ? <span className="badge new">New on {BRAND}</span>
                       : <span>★ {p.rating.toFixed(1)} <span className="muted">({p.reviews})</span></span>}
                     <span>{p.jobsDone} jobs</span>
                     <span>{p.area}</span>
                   </div>
                   <div className="meta muted">
-                    <span className="nowrap">~{p.travelMin} min away</span> · <span className="nowrap">usually {kes(p.typicalPriceKes)}</span>
+                    <span className="nowrap">~{p.travelMin} min away</span>
+                    <span className="nowrap">usually {kes(p.typicalPriceKes)}</span>
                   </div>
                 </div>
                 <button className="primary small" onClick={() => hire(p)} disabled={busy}>Hire</button>

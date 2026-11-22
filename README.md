@@ -1,5 +1,8 @@
 # matchmaker
 
+**Ceras Technologies**: the matching engine behind Ceras.
+
+
 Predictive matching for a home-services marketplace in Nairobi: given a customer request, rank the pros most likely to **respond**, **get hired** and **do the job well**.
 
 ```
