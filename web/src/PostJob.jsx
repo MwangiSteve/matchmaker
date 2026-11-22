@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
+import { BRAND, ICONS, SiteHeader } from './brand.jsx';
 
-const ICONS = {
-  plumbing: '🚰', electrical: '💡', cleaning: '🧽', painting: '🎨',
-  carpentry: '🪚', appliance_repair: '🔧', moving: '🚚',
-};
-const BRAND = 'Ceras';
-const COMPANY = 'Ceras Technologies';
 const kes = (n) => `KES ${Number(n).toLocaleString('en-KE')}`;
 
 function load(key, fallback = '') {
@@ -26,8 +21,9 @@ async function api(path, body) {
 
 export default function PostJob() {
   const [options, setOptions] = useState(null);
+  const params = new URLSearchParams(window.location.search);
   const [form, setForm] = useState({
-    category: '', description: '', area: load('mm.area'), urgency: 'this_week',
+    category: params.get('service') ?? '', description: '', area: params.get('area') ?? load('mm.area'), urgency: 'this_week',
     budgetKes: '', name: load('mm.name'), phone: load('mm.phone'),
   });
   const [coords, setCoords] = useState(null);
@@ -97,10 +93,9 @@ export default function PostJob() {
   const service = options?.categories.find((c) => c.slug === form.category);
 
   return (
+    <div className="site">
     <div className="page">
-      <header className="top">
-        <span className="logo" aria-label={COMPANY}>{BRAND}<span> Technologies</span></span>
-      </header>
+      <SiteHeader />
 
       {error && <div className="alert" role="alert">{error}</div>}
 
@@ -227,6 +222,7 @@ export default function PostJob() {
           <button className="link" onClick={startOver}>Post another job</button>
         </section>
       )}
+    </div>
     </div>
   );
 }

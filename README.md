@@ -73,7 +73,7 @@ await addReview(pool, { jobId, stars: 5 });
 
 ## Post a job screen (React + Express)
 
-`web/` is the customer's "Post a job" page, and `node/server.js` is the API behind it. The flow: pick a service, describe the job, choose an estate (or share your location), choose when, set a budget, enter a phone number, then see the top 5 pros and hire one. The pro's phone number is shown only after hiring.
+`web/` has two pages: the **homepage** at `/` (search box, popular services, how it works, areas served, a section for pros) and the customer's **"Post a job"** page at `/post`. Searching on the homepage, e.g. "leaking tap" or "maji" with an estate, opens `/post` with the service and estate already filled in. The Post a job page, and `node/server.js` is the API behind it. The flow: pick a service, describe the job, choose an estate (or share your location), choose when, set a budget, enter a phone number, then see the top 5 pros and hire one. The pro's phone number is shown only after hiring.
 
 ```bash
 python serve.py                                            # optional: ML model on :8765
