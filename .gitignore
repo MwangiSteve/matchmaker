@@ -3,3 +3,4 @@ __pycache__/
 model.pkl
 node_modules/
 .venv/
+*.zip
